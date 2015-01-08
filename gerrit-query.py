@@ -11,8 +11,23 @@ import sys
 
 HOME = os.getenv('USERPROFILE') or os.getenv('HOME')
 
+ALIAS = {
+    'zhongyue.luo@gmail.com': 'zhongyue.nah@intel.com',
+    'devananda.vdv@gmail.com': 'devananda@hp.com',
+    'lucasagomes@gmail.com': 'lucasagomes@redhat.com',
+    'rameshg87@gmail.com': 'rameshg@hp.com',
+    'glongwave@gmail.com': 'eric.guo@easystack.cn',
+    'tan.lin.good@gmail.com': 'tan.lin@intel.com',
+}
+
 TEAM = [
+    "ken.chen@intel.com",
+    "huichun.lu@intel.com",
     "zhongyue.nah@intel.com",
+    "weiting.chen@intel.com",
+    "zhidong.yu@intel.com",
+    "jun.sun@intel.com",
+    "chen.li@intel.com"
 ]
 
 PROJECTS = {
@@ -28,10 +43,6 @@ PROJECTS = {
     'manila': [
         'manila', 'python-manilaclient',
     ],
-}
-
-ALIAS = {
-    'zhongyue.luo@gmail.com': 'zhongyue.nah@intel.com',
 }
 
 
@@ -65,9 +76,26 @@ def change_stream(ssh_client, query, start_dt, end_dt):
             command = cmd_tmpl + ' resume_sortkey:%s' % change['sortKey']
 
 
+def xxx(change_json_obj_list):
+    for change in change_json_obj_list:
+        status = change.get('status')
+        date = datetime.datetime.fromtimestamp(change.get('lastUpdated'))
+        owner = change['owner']['email']
+        project = change.get('project')
+        insertions = sum([i['insertions']
+                          for i in change['currentPatchSet']['files']
+                          if i['file'] != "/COMMIT_MSG"])
+        deletions = sum([i['deletions']
+                         for i in change['currentPatchSet']['files']
+                         if i['file'] != "/COMMIT_MSG"])
+        subject = change.get('subject')
+        url = change.get('url')
+        print '\t'.join([str(i) for i in
+                         [status, date, owner, project,
+                          insertions, deletions, subject, url]])
+
+
 def member_report(ssh_client, start_date, end_date, verbose=False):
-    # Nubmer of the merged patches in the past N days,
-    # for all the projects (including openstack and stackforge)
     print '******************************************************'
     print ' Number of changes from', start_date, 'till', end_date
     print ' Including all the openstack and stackforge projects'
@@ -79,7 +107,7 @@ def member_report(ssh_client, start_date, end_date, verbose=False):
     new = {}
     query = '( owner:%s )' % ' OR owner:'.join(TEAM)
     for change in change_stream(ssh_client, query, start_date, end_date):
-        owner = change['owner'].get('email')
+        owner = change['owner']['email']
         status = change['status']
         if status == 'MERGED':
             merged.setdefault(owner, []).append(change)
@@ -98,32 +126,11 @@ def member_report(ssh_client, start_date, end_date, verbose=False):
     print 'TOTAL', '\t\t\t', merged_total, '\t', new_total
 
     if verbose:
-        for change in ([item for sublist in merged.values()
-                        for item in sublist] +
-                       [item for sublist in new.values()
-                        for item in sublist]):
-            deletions = 0
-            insertions = 0
-            for i in change['currentPatchSet']['files']:
-                if i['file'] == '/COMMIT_MSG':
-                    continue
-                deletions += i['deletions']
-                insertions += i['insertions']
-            subject = change.get('subject')
-            project = change.get('project')
-            owner = change.get('owner').get('email')
-            url = change.get('url')
-            date = datetime.datetime.fromtimestamp(change.get('lastUpdated'))
-            status = change.get('status')
-            print '\t'.join([str(i) for i in
-                             [status, date, owner, project,
-                              insertions, deletions, subject, url]])
+        xxx([item for sublist in merged.values() for item in sublist] +
+            [item for sublist in new.values() for item in sublist])
 
 
-def company_report(ssh_client, project, start_date, end_date):
-    # Nubmer of the merged patches in the past N days, for sahara project
-    # ssh -p 29418 zhidong@review.openstack.org gerrit query project:openstack/sahara status:merged age:14days
-    # unfortunately age:14days doesn't work, so we need a work-around
+def company_report(ssh_client, project, start_date, end_date, verbose=False):
     print '******************************************************'
     print ' Number of merged changes from', start_date, 'till', end_date
     print ' for openstack/%s project only' % project
@@ -131,30 +138,36 @@ def company_report(ssh_client, project, start_date, end_date):
     print 'merged', '\t', '%', '\t', 'inserted', '\t', 'deleted', '\t', 'domain'
     print '--------------------------------------'
 
-    total = 0
     merged = {}
-    deletions = {}
-    insertions = {}
     query = ('( project:openstack/%s )' %
              ' OR project:openstack/'.join(PROJECTS[project]))
     for change in change_stream(ssh_client, query, start_date, end_date):
-        owner = change['owner'].get('email')
-        domain = owner.split('@')[1]
-        merged[domain] = merged.setdefault(domain, 0) + 1
-        total += 1
-        for i in change['currentPatchSet']['files']:
-            if i['file'] == '/COMMIT_MSG':
-                continue
-            deletions[domain] = (deletions.setdefault(domain, 0) +
-                                 i['deletions'])
-            insertions[domain] = (insertions.setdefault(domain, 0) +
-                                  i['insertions'])
-    asdf = sorted(merged.items(), key=lambda(x, y): y, reverse=True)
-    for domain, cnt in asdf:
-        print '\t'.join([str(i) for i in [cnt, '%.1f' % (cnt * 100.0 / total),
-                         insertions[domain], deletions[domain], domain]])
+        status = change.get('status')
+        if status == 'MERGED':
+            owner = change['owner']['email']
+            domain = owner.split('@')[1]
+            merged.setdefault(domain, []).append(change)
+
+    rankings = sorted([(k, len(v)) for k, v in merged.iteritems()],
+                  key=lambda(x, y): y, reverse=True)
+    merged_total = sum([y for x, y in rankings])
+    for k, v in rankings:
+        changes = merged[k]
+        insertions = sum([i['insertions']
+            for j in changes for i in j['currentPatchSet']['files']
+            if i['file'] != "/COMMIT_MSG"])
+        deletions = sum([i['deletions']
+            for j in changes for i in j['currentPatchSet']['files']
+            if i['file'] != "/COMMIT_MSG"])
+        print '\t'.join([str(i) for i in [v,
+                                          '%.1f' % (v * 100.0 / merged_total),
+                                          insertions, deletions, k]])
     print '--------------------------------------'
-    print 'TOTAL', '\t', total
+    print 'TOTAL', '\t', merged_total
+
+    if verbose:
+        for k, v in rankings:
+            xxx(merged[k])
 
 
 if __name__ == '__main__':
@@ -164,7 +177,7 @@ if __name__ == '__main__':
                          help='Specifies the host of gerrit server')
     optparser.add_option('-P', '--port', type='int', default=29418,
                          help='Specifies the port to connect to on gerrit')
-    optparser.add_option('-l', '--login_name', default='zyluo',
+    optparser.add_option('-l', '--login_name', default='zhidong',
                          help='Specifies the user to log in as on gerrit')
     optparser.add_option('-i', '--identity_file',
                          default=os.path.join(HOME, '.ssh', 'id_rsa.pub'),
@@ -198,8 +211,8 @@ if __name__ == '__main__':
                    username=options.login_name)
     member_report(client, s_date, e_date, options.verbose)
     if options.project:
-        company_report(client, options.project, s_date, e_date)
+        company_report(client, options.project, s_date, e_date, options.verbose)
     else:
         for project in PROJECTS:
-            company_report(client, project, s_date, e_date)
+            company_report(client, project, s_date, e_date, options.verbose)
     client.close()
