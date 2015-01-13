@@ -50,9 +50,12 @@ def change_stream(ssh_client, query, start_dt, end_dt):
     now = datetime.datetime.now()
     lo_bound_day = (now-start_dt).days + 1
     up_bound_day = (now-end_dt).days
+    if up_bound_day > 0:
+        day_range = '-age:%sday age:%sday' % (lo_bound_day, up_bound_day)
+    else:
+        day_range = '-age:%sday' % lo_bound_day
     cmd_tmpl = ('gerrit query --current-patch-set --files --format JSON '
-                '-- %s -age:%sday age:%sday' %
-                (query, lo_bound_day, up_bound_day))
+                '-- %s %s' % (query, day_range))
     start_epoch = calendar.timegm(start_dt.utctimetuple())
     end_epoch = calendar.timegm(end_dt.utctimetuple())
     command = cmd_tmpl
@@ -199,8 +202,10 @@ if __name__ == '__main__':
 
     if not s_date < e_date:
         optparser.error("incorrect order of arguments")
+    elif s_date > datetime.datetime.now():
+        optparser.error("invalid start date")
     elif options.project and options.project not in PROJECTS:
-        optparser.error("incorrect project name")
+        optparser.error("invalid project name")
 
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
