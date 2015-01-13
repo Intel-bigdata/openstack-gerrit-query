@@ -5,9 +5,8 @@ import datetime
 import json
 import optparse
 import os
+
 import paramiko
-from pprint import pprint
-import sys
 
 HOME = os.getenv('USERPROFILE') or os.getenv('HOME')
 
