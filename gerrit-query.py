@@ -65,10 +65,10 @@ def change_stream(ssh_client, query, start_dt, end_dt):
             elif not json_obj['owner'].get('email'):
                 continue
             change = json_obj
-            real_owner = ALIAS.get(change['owner']['email'])
-            if real_owner:
-                change['owner']['email'] = real_owner
             if start_epoch <= change['lastUpdated'] < end_epoch:
+                real_owner = ALIAS.get(change['owner']['email'])
+                if real_owner:
+                    change['owner']['email'] = real_owner
                 yield change
         if not json_obj['rowCount']:
             break
