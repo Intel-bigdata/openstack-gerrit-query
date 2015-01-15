@@ -98,12 +98,11 @@ def xxx(change_json_obj_list):
 
 
 def member_report(ssh_client, start_date, end_date, verbose=False):
-    print '******************************************************'
-    print ' Number of changes from', start_date, 'till', end_date
-    print ' Including all the openstack and stackforge projects'
-    print '******************************************************'
-    print 'people', '\t\t\t', 'merged', '\t', 'open'
-    print '--------------------------------------'
+    print 'OpenStack Contribution Report'
+    print start_date, '-', end_date
+
+    print '\nIndividual contribution (covering all the proejcts in http://git.openstack.org/cgit)'
+    print 'contributor', '\t', '#merged', '\t', '#open'
 
     merged = {}
     new = {}
@@ -124,8 +123,7 @@ def member_report(ssh_client, start_date, end_date, verbose=False):
         merged_total += merged_cnt
         new_total += new_cnt
         print owner, '\t', merged_cnt, '\t', new_cnt
-    print '--------------------------------------'
-    print 'TOTAL', '\t\t\t', merged_total, '\t', new_total
+    print 'TOTAL', '\t', merged_total, '\t', new_total
 
     if verbose:
         xxx([item for sublist in merged.values() for item in sublist] +
@@ -133,12 +131,8 @@ def member_report(ssh_client, start_date, end_date, verbose=False):
 
 
 def company_report(ssh_client, project, start_date, end_date, verbose=False):
-    print '******************************************************'
-    print ' Number of merged changes from', start_date, 'till', end_date
-    print ' for openstack/%s project only' % project
-    print '******************************************************'
-    print 'merged', '\t', '%', '\t', 'inserted', '\t', 'deleted', '\t', 'domain'
-    print '--------------------------------------'
+    print '\nProject group:', project, '(%s)' % ','.join(PROJECTS[project])
+    print 'rank', '\t', 'domain', '\t', '#merged', '\t', '%merged', '\t', 'LOC inserted', '\t', 'LOC deleted'
 
     merged = {}
     query = ('( project:openstack/%s )' %
@@ -153,6 +147,7 @@ def company_report(ssh_client, project, start_date, end_date, verbose=False):
     rankings = sorted([(k, len(v)) for k, v in merged.iteritems()],
                   key=lambda(x, y): y, reverse=True)
     merged_total = sum([y for x, y in rankings])
+    rank = 1
     for k, v in rankings:
         changes = merged[k]
         insertions = sum([i['insertions']
@@ -161,11 +156,10 @@ def company_report(ssh_client, project, start_date, end_date, verbose=False):
         deletions = sum([i['deletions']
             for j in changes for i in j['currentPatchSet']['files']
             if i['file'] != "/COMMIT_MSG"])
-        print '\t'.join([str(i) for i in [v,
-                                          '%.1f' % (v * 100.0 / merged_total),
-                                          insertions, deletions, k]])
-    print '--------------------------------------'
-    print 'TOTAL', '\t', merged_total
+        print '\t'.join([str(i) for i in [rank, k, v,
+                                          '%.1f%%' % (v * 100.0 / merged_total),
+                                          insertions, deletions]])
+        rank += 1
 
     if verbose:
         for k, v in rankings:
@@ -179,7 +173,7 @@ if __name__ == '__main__':
                          help='Specifies the host of gerrit server')
     optparser.add_option('-P', '--port', type='int', default=29418,
                          help='Specifies the port to connect to on gerrit')
-    optparser.add_option('-l', '--login_name', default='zhidong',
+    optparser.add_option('-l', '--login_name',
                          help='Specifies the user to log in as on gerrit')
     optparser.add_option('-i', '--identity_file',
                          default=os.path.join(HOME, '.ssh', 'id_rsa.pub'),
