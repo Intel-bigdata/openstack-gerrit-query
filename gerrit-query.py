@@ -182,7 +182,7 @@ if __name__ == '__main__':
                          default=os.path.join(HOME, '.ssh', 'id_rsa.pub'),
                          help='Specifies the identity file '
                               'for public key auth')
-    optparser.add_option('-p', '--project', default=None,
+    optparser.add_option('-p', '--project', action='append', default=[],
                          help='Project to generate stats for')
     optparser.add_option('-v', '--verbose', action='store_true', default=False,
                          help='Um... Hard to explain. Try it and see')
@@ -201,8 +201,10 @@ if __name__ == '__main__':
         optparser.error("incorrect order of arguments")
     elif s_date > datetime.datetime.now():
         optparser.error("invalid start date")
-    elif options.project and options.project not in PROJECTS:
-        optparser.error("invalid project name")
+
+    for project in options.project:
+        if project not in PROJECTS:
+            optparser.error("invalid project name: %s" % project)
 
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -212,10 +214,6 @@ if __name__ == '__main__':
                    key_filename=options.identity_file,
                    username=options.login_name)
     member_report(client, s_date, e_date, options.verbose)
-    if options.project:
-        company_report(client, options.project,
-                       s_date, e_date, options.verbose)
-    else:
-        for project in PROJECTS:
-            company_report(client, project, s_date, e_date, options.verbose)
+    for project in options.project or PROJECTS:
+        company_report(client, project, s_date, e_date, options.verbose)
     client.close()
