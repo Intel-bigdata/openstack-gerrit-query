@@ -84,19 +84,19 @@ def change_stream(ssh_client, query, start_dt, end_dt):
 
 
 def xxx(change_json_obj_list):
-    for change in change_json_obj_list:
-        status = change.get('status')
-        date = datetime.datetime.fromtimestamp(change.get('lastUpdated'))
+    for change in sorted(change_json_obj_list, key=lambda x:x['lastUpdated']):
+        status = change['status']
+        date = datetime.datetime.fromtimestamp(change['lastUpdated'])
         owner = change['owner']['email']
-        project = change.get('project')
+        project = change['project']
         insertions = sum([i['insertions']
                           for i in change['currentPatchSet']['files']
                           if i['file'] != "/COMMIT_MSG"])
         deletions = sum([i['deletions']
                          for i in change['currentPatchSet']['files']
                          if i['file'] != "/COMMIT_MSG"])
-        subject = change.get('subject')
-        url = change.get('url')
+        subject = change['subject']
+        url = change['url']
         print tab_delimeter(status, date, owner, project,
                             insertions, deletions, subject, url)
 
@@ -144,7 +144,7 @@ def company_report(ssh_client, project, start_date, end_date, verbose=False):
     query = ('( project:openstack/%s )' %
              ' OR project:openstack/'.join(PROJECTS[project]))
     for change in change_stream(ssh_client, query, start_date, end_date):
-        status = change.get('status')
+        status = change['status']
         if status == 'MERGED':
             owner = change['owner']['email']
             domain = owner.split('@')[1]
