@@ -46,6 +46,10 @@ PROJECTS = {
 }
 
 
+def tab_delimeter(*args):
+    return '\t'.join([str(i) for i in args])
+
+
 def change_stream(ssh_client, query, start_dt, end_dt):
     now = datetime.datetime.now()
     lo_bound_day = (now-start_dt).days + 1
@@ -93,9 +97,8 @@ def xxx(change_json_obj_list):
                          if i['file'] != "/COMMIT_MSG"])
         subject = change.get('subject')
         url = change.get('url')
-        print '\t'.join([str(i) for i in
-                         [status, date, owner, project,
-                          insertions, deletions, subject, url]])
+        print tab_delimeter(status, date, owner, project,
+                            insertions, deletions, subject, url)
 
 
 def member_report(ssh_client, start_date, end_date, verbose=False):
@@ -104,7 +107,7 @@ def member_report(ssh_client, start_date, end_date, verbose=False):
 
     print ('\nIndividual contribution (covering all the proejcts '
            'in http://git.openstack.org/cgit)')
-    print 'contributor', '\t', '#merged', '\t', '#open'
+    print tab_delimeter('contributor', '#merged', '#open')
 
     merged = {}
     new = {}
@@ -124,8 +127,8 @@ def member_report(ssh_client, start_date, end_date, verbose=False):
         new_cnt = len(new.get(owner, []))
         merged_total += merged_cnt
         new_total += new_cnt
-        print owner, '\t', merged_cnt, '\t', new_cnt
-    print 'TOTAL', '\t', merged_total, '\t', new_total
+        print tab_delimeter(owner, merged_cnt, new_cnt)
+    print tab_delimeter('TOTAL', merged_total, new_total)
 
     if verbose:
         xxx([item for sublist in merged.values() for item in sublist] +
@@ -134,8 +137,8 @@ def member_report(ssh_client, start_date, end_date, verbose=False):
 
 def company_report(ssh_client, project, start_date, end_date, verbose=False):
     print '\nProject group:', project, '(%s)' % ','.join(PROJECTS[project])
-    print '\t'.join(['rank', 'domain', '#merged', '%merged', 'LOC inserted',
-                     'LOC deleted'])
+    print tab_delimeter('rank', 'domain', '#merged', '%merged', 'LOC inserted',
+                        'LOC deleted')
 
     merged = {}
     query = ('( project:openstack/%s )' %
@@ -150,8 +153,7 @@ def company_report(ssh_client, project, start_date, end_date, verbose=False):
     rankings = sorted([(k, len(v)) for k, v in merged.iteritems()],
                       key=lambda(x, y): y, reverse=True)
     merged_total = sum([y for x, y in rankings])
-    rank = 1
-    for k, v in rankings:
+    for rank, (k, v) in enumerate(rankings, start=1):
         changes = merged[k]
         insertions = sum([i['insertions']
             for j in changes for i in j['currentPatchSet']['files']
@@ -160,9 +162,7 @@ def company_report(ssh_client, project, start_date, end_date, verbose=False):
             for j in changes for i in j['currentPatchSet']['files']
             if i['file'] != "/COMMIT_MSG"])
         percentage = '%.1f%%' % (v * 100.0 / merged_total)
-        print '\t'.join([str(i) for i in [rank, k, v, percentage,
-                                          insertions, deletions]])
-        rank += 1
+        print tab_delimeter(rank, k, v, percentage, insertions, deletions)
 
     if verbose:
         for k, v in rankings:
