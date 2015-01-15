@@ -2,6 +2,7 @@
 
 import calendar
 import datetime
+import getpass
 import json
 import optparse
 import os
@@ -101,7 +102,8 @@ def member_report(ssh_client, start_date, end_date, verbose=False):
     print 'OpenStack Contribution Report'
     print start_date, '-', end_date
 
-    print '\nIndividual contribution (covering all the proejcts in http://git.openstack.org/cgit)'
+    print ('\nIndividual contribution (covering all the proejcts '
+           'in http://git.openstack.org/cgit)')
     print 'contributor', '\t', '#merged', '\t', '#open'
 
     merged = {}
@@ -132,7 +134,8 @@ def member_report(ssh_client, start_date, end_date, verbose=False):
 
 def company_report(ssh_client, project, start_date, end_date, verbose=False):
     print '\nProject group:', project, '(%s)' % ','.join(PROJECTS[project])
-    print 'rank', '\t', 'domain', '\t', '#merged', '\t', '%merged', '\t', 'LOC inserted', '\t', 'LOC deleted'
+    print '\t'.join(['rank', 'domain', '#merged', '%merged', 'LOC inserted',
+                     'LOC deleted'])
 
     merged = {}
     query = ('( project:openstack/%s )' %
@@ -145,7 +148,7 @@ def company_report(ssh_client, project, start_date, end_date, verbose=False):
             merged.setdefault(domain, []).append(change)
 
     rankings = sorted([(k, len(v)) for k, v in merged.iteritems()],
-                  key=lambda(x, y): y, reverse=True)
+                      key=lambda(x, y): y, reverse=True)
     merged_total = sum([y for x, y in rankings])
     rank = 1
     for k, v in rankings:
@@ -156,8 +159,8 @@ def company_report(ssh_client, project, start_date, end_date, verbose=False):
         deletions = sum([i['deletions']
             for j in changes for i in j['currentPatchSet']['files']
             if i['file'] != "/COMMIT_MSG"])
-        print '\t'.join([str(i) for i in [rank, k, v,
-                                          '%.1f%%' % (v * 100.0 / merged_total),
+        percentage = '%.1f%%' % (v * 100.0 / merged_total)
+        print '\t'.join([str(i) for i in [rank, k, v, percentage,
                                           insertions, deletions]])
         rank += 1
 
@@ -173,11 +176,12 @@ if __name__ == '__main__':
                          help='Specifies the host of gerrit server')
     optparser.add_option('-P', '--port', type='int', default=29418,
                          help='Specifies the port to connect to on gerrit')
-    optparser.add_option('-l', '--login_name',
+    optparser.add_option('-l', '--login_name', default=getpass.getuser(),
                          help='Specifies the user to log in as on gerrit')
     optparser.add_option('-i', '--identity_file',
                          default=os.path.join(HOME, '.ssh', 'id_rsa.pub'),
-                         help='Specifies the identity file for public key auth')
+                         help='Specifies the identity file '
+                              'for public key auth')
     optparser.add_option('-p', '--project', default=None,
                          help='Project to generate stats for')
     optparser.add_option('-v', '--verbose', action='store_true', default=False,
@@ -209,7 +213,8 @@ if __name__ == '__main__':
                    username=options.login_name)
     member_report(client, s_date, e_date, options.verbose)
     if options.project:
-        company_report(client, options.project, s_date, e_date, options.verbose)
+        company_report(client, options.project,
+                       s_date, e_date, options.verbose)
     else:
         for project in PROJECTS:
             company_report(client, project, s_date, e_date, options.verbose)
