@@ -9,8 +9,6 @@ import os
 
 import paramiko
 
-HOME = os.getenv('USERPROFILE') or os.getenv('HOME')
-
 ALIAS = {
     'zhongyue.luo@gmail.com': 'zhongyue.nah@intel.com',
     'devananda.vdv@gmail.com': 'devananda@hp.com',
@@ -170,6 +168,8 @@ def company_report(ssh_client, project, start_date, end_date, verbose=False):
 
 
 if __name__ == '__main__':
+    home_dir = os.getenv('USERPROFILE') or os.getenv('HOME')
+
     usage = 'Usage: %prog [options] YYYY-MM-DD YYYY-MM-DD'
     optparser = optparse.OptionParser(usage)
     optparser.add_option('-H', '--host', default='review.openstack.org',
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     optparser.add_option('-l', '--login_name', default=getpass.getuser(),
                          help='Specifies the user to log in as on gerrit')
     optparser.add_option('-i', '--identity_file',
-                         default=os.path.join(HOME, '.ssh', 'id_rsa.pub'),
+                         default=os.path.join(home_dir, '.ssh', 'id_rsa.pub'),
                          help='Specifies the identity file '
                               'for public key auth')
     optparser.add_option('-p', '--project', action='append', default=[],
